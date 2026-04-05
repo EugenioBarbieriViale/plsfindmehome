@@ -1,0 +1,10 @@
+[package]
+name = "plsfindmehome"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1.50.0", features = ["full"] }
+chromiumoxide = "0.9.1"
+futures = "0.3.32"
+scraper = "0.26.0"
