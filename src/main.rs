@@ -27,11 +27,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         wg_state: &wg_states[0],
     };
 
-    let (browser, mut handler) =
-        Browser::launch(BrowserConfig::builder().with_head().build()?).await?;
-
     // let (browser, mut handler) =
-    //     Browser::launch(BrowserConfig::builder().new_headless_mode().build()?).await?;
+    //     Browser::launch(BrowserConfig::builder().with_head().build()?).await?;
+
+    let (browser, mut handler) =
+        Browser::launch(BrowserConfig::builder().new_headless_mode().build()?).await?;
 
     let handle = tokio::spawn(async move {
         loop {
