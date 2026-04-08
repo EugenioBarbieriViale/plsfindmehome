@@ -1,6 +1,6 @@
 // TODO:
 // - implement wait_for_selector()
-// - error matching for language differences
+// - error matching for language differences DONE
 
 mod wg_zimmer;
 
@@ -31,11 +31,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         wg_state: &wg_states[0],
     };
 
-    let (browser, mut handler) =
-        Browser::launch(BrowserConfig::builder().with_head().build()?).await?;
+    let (browser, mut handler) = Browser::launch(
+        BrowserConfig::builder()
+            .with_head()
+            .window_size(1920, 1080)
+            .build()?,
+    )
+    .await?;
 
     // let (browser, mut handler) =
     //     Browser::launch(BrowserConfig::builder().new_headless_mode().build()?).await?;
+
+    // let (browser, mut handler) = Browser::launch(
+    //     BrowserConfig::builder()
+    //         .arg("--headless=old")
+    //         .arg("--disable-blink-features=AutomationControlled")
+    //         .arg("--no-sandbox")
+    //         .arg("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36")
+    //         .window_size(1920, 1080)
+    //         .build()?,
+    // )
+    // .await?;
 
     let handle = tokio::spawn(async move {
         loop {

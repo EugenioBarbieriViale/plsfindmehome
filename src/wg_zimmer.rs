@@ -27,15 +27,29 @@ pub async fn browse<'a>(
     let state_selector = format!("span[class='stateShortcut'][data-state='{}']", q.wg_state);
     page.find_element(state_selector).await?.click().await?;
 
-    page.find_element("input[value='Suchen']")
-        .await?
-        .click()
-        .await?;
+    match page.find_element("input[value='Search']").await {
+        Ok(el) => {
+            el.click().await?;
+        }
+        Err(_) => {
+            page.find_element("input[value='Suchen']")
+                .await?
+                .click()
+                .await?;
+        }
+    }
+
+    page.evaluate_on_new_document(
+        r#"
+    Object.defineProperty(navigator, 'webdriver', { get: () => false });
+"#,
+    )
+    .await?;
 
     println!("Waiting for page to load...");
     sleep(Duration::from_secs(3)).await;
-    println!("New page loaded!");
 
+    println!("New page loaded!");
     let html = page.wait_for_navigation().await?.content().await?;
 
     extract_juice(&html);
