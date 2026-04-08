@@ -36,7 +36,7 @@ pub async fn browse<'a>(
     sleep(Duration::from_secs(3)).await;
     println!("New page loaded!");
 
-    let html = page.content().await?;
+    let html = page.wait_for_navigation().await?.content().await?;
 
     extract_juice(&html);
 

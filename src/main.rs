@@ -1,3 +1,7 @@
+// TODO:
+// - implement wait_for_selector()
+// - error matching for language differences
+
 mod wg_zimmer;
 
 use crate::wg_zimmer::browse;
@@ -27,11 +31,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         wg_state: &wg_states[0],
     };
 
-    // let (browser, mut handler) =
-    //     Browser::launch(BrowserConfig::builder().with_head().build()?).await?;
-
     let (browser, mut handler) =
-        Browser::launch(BrowserConfig::builder().new_headless_mode().build()?).await?;
+        Browser::launch(BrowserConfig::builder().with_head().build()?).await?;
+
+    // let (browser, mut handler) =
+    //     Browser::launch(BrowserConfig::builder().new_headless_mode().build()?).await?;
 
     let handle = tokio::spawn(async move {
         loop {
