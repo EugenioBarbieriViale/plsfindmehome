@@ -1,8 +1,13 @@
 mod wg_zimmer;
 
+use crate::wg_zimmer::scrape;
 use thirtyfour::prelude::*;
 
-use crate::wg_zimmer::scrape;
+struct WGQuery<'a> {
+    price_min: usize,
+    price_max: usize,
+    wg_state: &'a String,
+}
 
 #[tokio::main]
 async fn main() -> WebDriverResult<()> {
@@ -13,12 +18,22 @@ async fn main() -> WebDriverResult<()> {
     let url = "https://www.wgzimmer.ch/wgzimmer/search/mate.html";
     driver.goto(url).await?;
 
-    match scrape(&driver).await {
-        Ok(v) => v,
-        Err(_e) => (),
+    let wg_states: Vec<String> = vec![
+        "zurich-stadt".to_string(),
+        "zurich-lake".to_string(),
+        "zurich".to_string(),
+        "zurich-oberland".to_string(),
+    ];
+
+    let q = WGQuery {
+        price_min: 200,
+        price_max: 800,
+        wg_state: &wg_states[0],
     };
 
-    driver.quit().await?;
+    scrape(&driver, &q).await?;
+
+    // driver.quit().await?;
 
     Ok(())
 }
