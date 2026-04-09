@@ -7,6 +7,7 @@ mod wg_zimmer;
 use crate::wg_zimmer::browse;
 use chromiumoxide::{Browser, BrowserConfig};
 use futures::StreamExt;
+use rand::seq::IndexedRandom;
 
 struct Query<'a> {
     price_min: usize,
@@ -31,10 +32,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         wg_state: &wg_states[0],
     };
 
+    let proxies: Vec<String> = vec![
+        "http://149.210.158.107:5001".to_string(),
+        "http://147.182.255.208:443	".to_string(),
+        "http://81.171.24.164:443".to_string(),
+        "http://149.210.243.125:443	".to_string(),
+        "http://52.140.7.131:443".to_string(),
+        "http://52.178.94.61:443".to_string(),
+        "http://124.156.223.252:4433".to_string(),
+        "http://103.3.63.59:443".to_string(),
+        "http://134.0.63.185:443".to_string(),
+        "http://165.22.60.108:443".to_string(),
+    ];
+
+    let proxy_arg = format!(
+        "--proxy-server={}",
+        proxies.choose(&mut rand::rng()).unwrap()
+    );
+    println!("{}", proxy_arg);
+
     let (browser, mut handler) = Browser::launch(
         BrowserConfig::builder()
             .with_head()
             .window_size(1920, 1080)
+            .arg(proxy_arg)
             .build()?,
     )
     .await?;
