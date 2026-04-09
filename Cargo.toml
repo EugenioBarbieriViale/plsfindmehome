@@ -5,6 +5,5 @@ edition = "2024"
 
 [dependencies]
 tokio = { version = "1.50.0", features = ["full"] }
-chromiumoxide = "0.9.1"
-futures = "0.3.32"
+thirtyfour = "0.36.1"
 scraper = "0.26.0"

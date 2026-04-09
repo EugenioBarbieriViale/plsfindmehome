@@ -1,66 +1,24 @@
-// TODO:
-// - implement wait_for_selector()
-// - error matching for language differences DONE
-
 mod wg_zimmer;
 
-use crate::wg_zimmer::browse;
-use chromiumoxide::{Browser, BrowserConfig};
-use futures::StreamExt;
+use thirtyfour::prelude::*;
 
-struct Query<'a> {
-    price_min: usize,
-    price_max: usize,
-    wg_state: &'a String,
-}
+use crate::wg_zimmer::scrape;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let url = String::from("https://www.wgzimmer.ch/en/wgzimmer/search/mate.html");
+async fn main() -> WebDriverResult<()> {
+    let caps = DesiredCapabilities::chrome();
+    // caps.add_arg("--headless")?;
+    let driver = WebDriver::new("http://localhost:32863", caps).await?;
 
-    let wg_states: Vec<String> = vec![
-        "zurich-stadt".to_string(),
-        "zurich-lake".to_string(),
-        "zurich".to_string(),
-        "zurich-oberland".to_string(),
-    ];
+    let url = "https://www.wgzimmer.ch/wgzimmer/search/mate.html";
+    driver.goto(url).await?;
 
-    let q = Query {
-        price_min: 200,
-        price_max: 800,
-        wg_state: &wg_states[0],
+    match scrape(&driver).await {
+        Ok(v) => v,
+        Err(_e) => (),
     };
 
-    let (browser, mut handler) = Browser::launch(
-        BrowserConfig::builder()
-            .with_head()
-            .window_size(1920, 1080)
-            .build()?,
-    )
-    .await?;
+    driver.quit().await?;
 
-    // let (browser, mut handler) =
-    //     Browser::launch(BrowserConfig::builder().new_headless_mode().build()?).await?;
-
-    // let (browser, mut handler) = Browser::launch(
-    //     BrowserConfig::builder()
-    //         .arg("--headless=old")
-    //         .arg("--disable-blink-features=AutomationControlled")
-    //         .arg("--no-sandbox")
-    //         .arg("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36")
-    //         .window_size(1920, 1080)
-    //         .build()?,
-    // )
-    // .await?;
-
-    let handle = tokio::spawn(async move {
-        loop {
-            let _event = handler.next().await.unwrap();
-        }
-    });
-
-    browse(&browser, &url, &q).await?;
-
-    handle.await?;
     Ok(())
 }
