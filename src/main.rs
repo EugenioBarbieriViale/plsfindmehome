@@ -1,9 +1,11 @@
-mod wg_zimmer;
-
 use crate::wg_zimmer::scrape;
 use dotenv::dotenv;
 use std::env;
+use std::path::Path;
 use thirtyfour::prelude::*;
+
+mod handle_csv;
+mod wg_zimmer;
 
 struct WGQuery<'a> {
     price_min: usize,
@@ -20,7 +22,7 @@ async fn main() -> WebDriverResult<()> {
     // caps.add_arg("--headless")?;
     let driver = WebDriver::new(format!("http://localhost:{}", port), caps).await?;
 
-    let url = "https://www.wgzimmer.ch/wgzimmer/search/mate.html";
+    let url = env::var("URL").unwrap();
     driver.goto(url).await?;
 
     let wg_states: Vec<String> = vec![
@@ -31,14 +33,16 @@ async fn main() -> WebDriverResult<()> {
     ];
 
     let q = WGQuery {
-        price_min: 200,
+        price_min: 300,
         price_max: 800,
         wg_state: &wg_states[0],
     };
 
-    scrape(&driver, &q).await?;
+    let v = env::var("CSV_PATH").unwrap();
+    let path = Path::new(&v);
+    scrape(&path, &driver, &q).await?;
 
-    // driver.quit().await?;
+    driver.quit().await?;
 
     Ok(())
 }
