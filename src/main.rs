@@ -1,6 +1,8 @@
 mod wg_zimmer;
 
 use crate::wg_zimmer::scrape;
+use dotenv::dotenv;
+use std::env;
 use thirtyfour::prelude::*;
 
 struct WGQuery<'a> {
@@ -11,9 +13,12 @@ struct WGQuery<'a> {
 
 #[tokio::main]
 async fn main() -> WebDriverResult<()> {
+    dotenv().ok();
+    let port = env::var("PORT").unwrap();
+
     let caps = DesiredCapabilities::chrome();
     // caps.add_arg("--headless")?;
-    let driver = WebDriver::new("http://localhost:32863", caps).await?;
+    let driver = WebDriver::new(format!("http://localhost:{}", port), caps).await?;
 
     let url = "https://www.wgzimmer.ch/wgzimmer/search/mate.html";
     driver.goto(url).await?;
