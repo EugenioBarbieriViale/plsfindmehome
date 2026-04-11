@@ -1,9 +1,7 @@
 use crate::wg_zimmer::Juice;
-// use std::fs::File;
 use std::path::Path;
 
 pub fn write_to_csv(path: &Path, data: &Juice) -> Result<(), csv::Error> {
-    // let _file = File::create(path)?;
     let mut wtr = csv::Writer::from_path(path)?;
 
     wtr.write_record(&["price", "position", "date", "period", "link"])?;

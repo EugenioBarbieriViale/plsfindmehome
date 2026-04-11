@@ -1,6 +1,7 @@
 use crate::wg_zimmer::scrape;
 use dotenv::dotenv;
 use std::env;
+use std::fs::{File, create_dir};
 use std::path::Path;
 use thirtyfour::prelude::*;
 
@@ -38,8 +39,20 @@ async fn main() -> WebDriverResult<()> {
         wg_state: &wg_states[0],
     };
 
-    let v = env::var("CSV_PATH").unwrap();
-    let path = Path::new(&v);
+    let mut dir_path: String = env::var("DATA_PATH").unwrap().to_owned();
+    let csv_file: &String = &env::var("CSV_FILE").unwrap();
+
+    create_dir(Path::new(&dir_path))?;
+
+    dir_path.push_str(csv_file);
+    let path = Path::new(&dir_path);
+    match File::create(path) {
+        Ok(_) => (),
+        Err(_) => {
+            println!("File {} already exists.", csv_file);
+        }
+    }
+
     scrape(&path, &driver, &q).await?;
 
     driver.quit().await?;
