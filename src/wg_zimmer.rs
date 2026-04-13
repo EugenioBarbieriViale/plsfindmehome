@@ -1,5 +1,6 @@
 use crate::WGQuery;
 use crate::handle_csv::write_to_csv;
+use core::num;
 use futures::future::join_all;
 use rand::random_range;
 use scraper::{Html, Selector};
@@ -28,10 +29,18 @@ pub async fn scrape<'a>(
     search(driver, query).await?;
     sleep(Duration::from_secs(3)).await;
 
-    let j = Juice::extract(driver).await?;
-    match write_to_csv(path, &j) {
+    let num_pages = get_num_pages(driver).await?;
+    let mut data: Vec<Juice> = vec![];
+
+    for _ in 0..num_pages {
+        let j = Juice::extract(driver).await?;
+        data.push(j);
+        load_next_page(driver).await?;
+    }
+
+    match write_to_csv(path, data) {
         Ok(_) => {
-            println!("Data successully saved in {:?}", path);
+            println!("Data successully saved to {:?}", path);
         }
         Err(e) => {
             println!("Could not write data to {:?}: {:?}", path, e);
@@ -98,6 +107,40 @@ pub async fn search<'a>(driver: &WebDriver, query: &WGQuery<'a>) -> WebDriverRes
         }
     }
     println!("Done.");
+
+    Ok(())
+}
+
+pub async fn get_num_pages(driver: &WebDriver) -> WebDriverResult<usize> {
+    sleep(Duration::from_secs(rnd())).await;
+    let pages_str = driver
+        .find(By::Css("span[class'counter']"))
+        .await?
+        .inner_html()
+        .await?;
+
+    match pages_str.find('/') {
+        Some(n) => Ok(pages_str[n..].trim().parse().unwrap()),
+        None => {
+            panic!("Could not load new page");
+        }
+    }
+}
+
+pub async fn load_next_page(driver: &WebDriver) -> WebDriverResult<()> {
+    sleep(Duration::from_secs(rnd() * 2)).await;
+    driver
+        .execute("window.scrollTo(0, document.body.scrollHeight);", vec![])
+        .await?;
+
+    println!("Loading next page...");
+    sleep(Duration::from_secs(rnd())).await;
+
+    let next_page_button = driver
+        .find(By::Css("a[class='next'][title='Nächstes Inserat']"))
+        .await?;
+    next_page_button.click().await?;
+    println!("Next page has been loaded.");
 
     Ok(())
 }

@@ -1,8 +1,9 @@
 use crate::wg_zimmer::scrape;
+use chrono::Utc;
 use dotenv::dotenv;
 use std::env;
 use std::fs::{File, create_dir};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use thirtyfour::prelude::*;
 
 mod handle_csv;
@@ -39,23 +40,36 @@ async fn main() -> WebDriverResult<()> {
         wg_state: &wg_states[0],
     };
 
-    let mut dir_path: String = env::var("DATA_PATH").unwrap().to_owned();
-    let csv_file: &String = &env::var("CSV_FILE").unwrap();
-
-    create_dir(Path::new(&dir_path))?;
-
-    dir_path.push_str(csv_file);
-    let path = Path::new(&dir_path);
-    match File::create(path) {
-        Ok(_) => (),
-        Err(_) => {
-            println!("File {} already exists.", csv_file);
-        }
-    }
-
+    let path = handle_files();
     scrape(&path, &driver, &q).await?;
 
     driver.quit().await?;
 
     Ok(())
+}
+
+fn handle_files() -> PathBuf {
+    let dir_path = env::var("DATA_PATH").unwrap().to_owned();
+    // let csv_file: &String = &env::var("CSV_FILE").unwrap();
+    let csv_file = format!("{}.csv", Utc::now().to_string());
+
+    match create_dir(Path::new(&dir_path)) {
+        Ok(_) => (),
+        Err(_) => {
+            println!("Directory {} already exists, not creating.", dir_path);
+        }
+    };
+
+    // dir_path.push_str(csv_file);
+    let dir_path = format!("{dir_path}{csv_file}");
+    let path = Path::new(&dir_path);
+
+    match File::create(path) {
+        Ok(_) => (),
+        Err(_) => {
+            println!("File {:?} already exists, not creating.", path);
+        }
+    };
+
+    path.to_owned()
 }
