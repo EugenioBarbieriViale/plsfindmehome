@@ -1,5 +1,5 @@
 use crate::WGQuery;
-use crate::handle_data::write_to_csv;
+use handle_data::write_to_csv;
 
 use futures::future::join_all;
 use rand::random_range;
@@ -7,6 +7,9 @@ use scraper::{Html, Selector};
 use std::path::Path;
 use thirtyfour::prelude::*;
 use tokio::time::{Duration, sleep};
+
+mod apply;
+pub mod handle_data;
 
 fn rnd() -> u64 {
     random_range(1..=4)
@@ -19,6 +22,7 @@ pub async fn scrape<'a>(
 ) -> WebDriverResult<()> {
     sleep(Duration::from_secs(rnd())).await;
     let consent_button = driver.find(By::Css("p[class='fc-button-label']")).await;
+
     match consent_button {
         Ok(b) => b.click().await?,
         Err(_) => {
@@ -32,7 +36,9 @@ pub async fn scrape<'a>(
     let num_pages = get_num_pages(driver).await?;
     let mut data: Vec<Juice> = vec![];
 
-    for _ in 0..num_pages {
+    for i in 0..num_pages {
+        println!("--- Extracting data from page {}/{} ---", i, num_pages);
+
         let j = Juice::extract(driver).await?;
         data.push(j);
         load_next_page(driver).await?;
@@ -135,8 +141,16 @@ async fn load_next_page(driver: &WebDriver) -> WebDriverResult<()> {
     println!("Loading next page...");
     sleep(Duration::from_secs(rnd())).await;
 
-    let next_page_button = driver.find(By::Css("a[class='next']")).await?;
-    next_page_button.click().await?;
+    let next_elem = driver.find(By::Css("a[class='next']")).await?;
+    let next_page_link = next_elem.attr("href").await?.unwrap();
+
+    driver
+        .execute(
+            format!("open('{}', target='_self')", next_page_link),
+            vec![],
+        )
+        .await?;
+
     println!("Next page has been loaded.");
 
     Ok(())
@@ -213,29 +227,24 @@ impl Juice {
                 .text()
                 .collect::<String>();
 
-            let link = fragment
-                .select(&Selector::parse("a").unwrap())
-                .next()
-                .unwrap()
-                .value()
-                .attr("href")
-                .unwrap();
+            let link = String::from(
+                fragment
+                    .select(&Selector::parse("a").unwrap())
+                    .next()
+                    .unwrap()
+                    .value()
+                    .attr("href")
+                    .unwrap(),
+            );
 
-            println!("--- {} ---", counter);
+            println!("Inserat {}", counter);
             counter += 1;
-
-            println!("{}", price);
-            println!("{}", position);
-            println!("{}", date);
-            println!("{}", period);
-            println!("{}", link);
-            println!("");
 
             prices.push(price);
             positions.push(position);
             dates.push(date);
             periods.push(period);
-            links.push(String::from(link));
+            links.push(link);
         }
 
         Ok(Self {

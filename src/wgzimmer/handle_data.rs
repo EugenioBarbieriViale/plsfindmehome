@@ -1,4 +1,4 @@
-use crate::wg_zimmer::Juice;
+use crate::wgzimmer::Juice;
 
 use chrono::Utc;
 use std::env;
@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 pub fn handle_files() -> PathBuf {
     let dir_path = env::var("DATA_PATH").unwrap().to_owned();
-    let csv_file = format!("{}.csv", Utc::now().to_string());
+    let csv_file = format!("{}.csv", Utc::now().to_string()).replace(" ", "_");
 
     match create_dir(Path::new(&dir_path)) {
         Ok(_) => (),
@@ -20,6 +20,7 @@ pub fn handle_files() -> PathBuf {
     let path = Path::new(&dir_path);
 
     File::create(path).unwrap();
+    println!("Created file {:?}.", path);
 
     path.to_owned()
 }
