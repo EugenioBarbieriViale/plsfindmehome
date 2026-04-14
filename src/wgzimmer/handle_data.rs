@@ -1,13 +1,13 @@
-use crate::wgzimmer::Juice;
+use crate::wgzimmer::Wg;
 
-use chrono::Utc;
+use chrono::Local;
 use std::env;
-use std::fs::{File, create_dir};
+use std::fs::create_dir;
 use std::path::{Path, PathBuf};
 
 pub fn handle_files() -> PathBuf {
     let dir_path = env::var("DATA_PATH").unwrap().to_owned();
-    let csv_file = format!("{}.csv", Utc::now().to_string()).replace(" ", "_");
+    let csv_file = format!("{}.csv", Local::now().to_string()).replace(" ", "_");
 
     match create_dir(Path::new(&dir_path)) {
         Ok(_) => (),
@@ -19,26 +19,16 @@ pub fn handle_files() -> PathBuf {
     let dir_path = format!("{dir_path}{csv_file}");
     let path = Path::new(&dir_path);
 
-    File::create(path).unwrap();
-    println!("Created file {:?}.", path);
-
     path.to_owned()
 }
 
-pub fn write_to_csv(path: &Path, data: Vec<Juice>) -> Result<(), csv::Error> {
+pub fn write_to_csv(path: &Path, data: Vec<Vec<Wg>>) -> Result<(), csv::Error> {
     let mut wtr = csv::Writer::from_path(path)?;
 
-    wtr.write_record(&["price", "position", "date", "period", "link"])?;
-    for juice in data {
-        for i in 0..juice.size {
-            let price = juice.prices[i].to_string();
-            wtr.write_record(&[
-                price.as_str(),
-                &juice.positions[i],
-                &juice.dates[i],
-                &juice.periods[i],
-                &juice.links[i],
-            ])?;
+    wtr.write_record(&["price", "link", "address", "place", "from", "until"])?;
+    for page_data in data {
+        for wg in page_data {
+            wtr.write_record(&[wg.price, wg.link, wg.address, wg.place, wg.from, wg.until])?;
         }
     }
     wtr.flush()?;

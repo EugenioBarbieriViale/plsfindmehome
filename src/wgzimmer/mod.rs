@@ -1,4 +1,6 @@
+use crate::Application;
 use crate::WGQuery;
+use apply::send_appl;
 use handle_data::write_to_csv;
 
 use futures::future::join_all;
@@ -11,14 +13,11 @@ use tokio::time::{Duration, sleep};
 mod apply;
 pub mod handle_data;
 
-fn rnd() -> u64 {
-    random_range(1..=4)
-}
-
 pub async fn scrape<'a>(
     path: &Path,
     driver: &WebDriver,
     query: &WGQuery<'a>,
+    appl: &Application,
 ) -> WebDriverResult<()> {
     sleep(Duration::from_secs(rnd())).await;
     let consent_button = driver.find(By::Css("p[class='fc-button-label']")).await;
@@ -33,15 +32,13 @@ pub async fn scrape<'a>(
     search(driver, query).await?;
     sleep(Duration::from_secs(3)).await;
 
+    sleep(Duration::from_secs(rnd())).await;
     let num_pages = get_num_pages(driver).await?;
-    let mut data: Vec<Juice> = vec![];
 
+    let mut data: Vec<Vec<Wg>> = vec![];
     for i in 0..num_pages {
         println!("--- Extracting data from page {}/{} ---", i, num_pages);
-
-        let j = Juice::extract(driver).await?;
-        data.push(j);
-        load_next_page(driver).await?;
+        data.push(scrape_page(driver, appl).await?);
     }
 
     match write_to_csv(path, data) {
@@ -54,6 +51,46 @@ pub async fn scrape<'a>(
     }
 
     Ok(())
+}
+
+async fn scrape_page(driver: &WebDriver, appl: &Application) -> WebDriverResult<Vec<Wg>> {
+    let wgs = driver
+        .find_all(By::Css("li[class='search-result-entry search-mate-entry']"))
+        .await?;
+
+    let size = wgs.len();
+    println!("{} wgs found.", size);
+
+    let futures = wgs.iter().map(|wg| wg.outer_html());
+    let str_wgs: Vec<_> = join_all(futures)
+        .await
+        .into_iter()
+        .collect::<Result<_, _>>()?;
+
+    let mut page_data: Vec<Wg> = vec![];
+    for wg in str_wgs {
+        let price = get_price(&wg).unwrap();
+        let link = get_link(&wg).unwrap();
+        println!("{}", link);
+
+        goto_link(driver, &link).await?;
+        sleep(Duration::from_secs(rnd())).await;
+
+        let wg_info: Wg = Wg::extract_info(&driver, &price, &link).await?;
+        println!("{:?}", wg_info);
+
+        page_data.push(wg_info);
+
+        send_appl(driver, appl).await?;
+
+        sleep(Duration::from_secs(rnd())).await;
+        back_to_list(driver).await?;
+    }
+
+    sleep(Duration::from_secs(rnd() * 2)).await;
+    load_next_page(driver).await?;
+
+    Ok(page_data)
 }
 
 async fn search<'a>(driver: &WebDriver, query: &WGQuery<'a>) -> WebDriverResult<()> {
@@ -117,7 +154,6 @@ async fn search<'a>(driver: &WebDriver, query: &WGQuery<'a>) -> WebDriverResult<
 }
 
 async fn get_num_pages(driver: &WebDriver) -> WebDriverResult<usize> {
-    sleep(Duration::from_secs(rnd())).await;
     let pages_str = driver
         .find(By::Css("span[class='counter']"))
         .await?
@@ -133,7 +169,6 @@ async fn get_num_pages(driver: &WebDriver) -> WebDriverResult<usize> {
 }
 
 async fn load_next_page(driver: &WebDriver) -> WebDriverResult<()> {
-    sleep(Duration::from_secs(rnd() * 2)).await;
     driver
         .execute("window.scrollTo(0, document.body.scrollHeight);", vec![])
         .await?;
@@ -144,116 +179,119 @@ async fn load_next_page(driver: &WebDriver) -> WebDriverResult<()> {
     let next_elem = driver.find(By::Css("a[class='next']")).await?;
     let next_page_link = next_elem.attr("href").await?.unwrap();
 
-    driver
-        .execute(
-            format!("open('{}', target='_self')", next_page_link),
-            vec![],
-        )
-        .await?;
+    goto_link(driver, &next_page_link).await?;
 
     println!("Next page has been loaded.");
 
     Ok(())
 }
 
-pub struct Juice {
-    pub size: usize,
-    pub prices: Vec<usize>,
-    pub positions: Vec<String>,
-    pub dates: Vec<String>,
-    pub periods: Vec<String>,
-    pub links: Vec<String>,
+async fn goto_link(driver: &WebDriver, link: &String) -> WebDriverResult<()> {
+    driver
+        .execute(format!("open('{}', target='_self')", link), vec![])
+        .await?;
+    Ok(())
 }
 
-impl Juice {
-    async fn extract(driver: &WebDriver) -> WebDriverResult<Self> {
-        let wgs = driver
-            .find_all(By::Css("li[class='search-result-entry search-mate-entry']"))
+fn get_link(wg: &String) -> Option<String> {
+    let fragment = Html::parse_fragment(wg);
+    let link = String::from(
+        fragment
+            .select(&Selector::parse("a").unwrap())
+            .next()
+            .unwrap()
+            .value()
+            .attr("href")
+            .unwrap(),
+    );
+
+    Some(link)
+}
+
+fn get_price(wg: &String) -> Option<String> {
+    let fragment = Html::parse_fragment(wg);
+
+    let price_selector = Selector::parse("span[class='cost']").unwrap();
+    let price = fragment
+        .select(&price_selector)
+        .next()
+        .unwrap()
+        .text()
+        .collect::<String>()
+        .trim()
+        .parse()
+        .unwrap();
+
+    Some(price)
+}
+
+#[derive(Debug)]
+pub struct Wg {
+    price: String,
+    link: String,
+    address: String,
+    place: String,
+    from: String,
+    until: String,
+}
+
+impl Wg {
+    async fn extract_info(
+        driver: &WebDriver,
+        price: &String,
+        link: &String,
+    ) -> WebDriverResult<Self> {
+        let container = driver
+            .find(By::Css("div[class='wrap col-wrap date-cost']"))
             .await?;
 
-        let size = wgs.len();
-        println!("{} wgs found.", size);
+        let ps = container.find_all(By::Tag("p")).await?;
 
-        let futures = wgs.iter().map(|wg| wg.outer_html());
-        let html_wgs: Vec<_> = join_all(futures)
-            .await
-            .into_iter()
-            .collect::<Result<_, _>>()?;
+        let from = ps[0].text().await?;
+        let until = ps[1].text().await?;
 
-        let mut prices: Vec<usize> = vec![];
-        let mut positions: Vec<String> = vec![];
-        let mut dates: Vec<String> = vec![];
-        let mut periods: Vec<String> = vec![];
-        let mut links: Vec<String> = vec![];
+        let from = from.trim_start_matches("Ab dem").trim().to_string();
+        let until = until.trim_start_matches("Bis").trim().to_string();
 
-        let mut counter = 0;
+        let container = driver
+            .find(By::Css("div[class='wrap col-wrap adress-region']"))
+            .await?;
 
-        for wg in html_wgs {
-            let fragment = Html::parse_fragment(&wg);
+        let ps = container.find_all(By::Tag("p")).await?;
 
-            let price_selector = Selector::parse("span[class='cost']").unwrap();
-            let price = fragment
-                .select(&price_selector)
-                .next()
-                .unwrap()
-                .text()
-                .collect::<String>()
-                .trim()
-                .parse()
-                .unwrap();
+        let address = ps[0].text().await?;
+        let place = ps[1].text().await?;
 
-            let pos_selector = Selector::parse("span[class='thumbState']").unwrap();
-            let position = fragment
-                .select(&pos_selector)
-                .next()
-                .unwrap()
-                .text()
-                .collect::<String>();
+        let address = address
+            .trim_start_matches("Adresse")
+            .trim()
+            .replace("\n", "")
+            .to_string();
 
-            let date_selector =
-                Selector::parse("div.create-date.left-image-result strong").unwrap();
-            let date = fragment
-                .select(&date_selector)
-                .next()
-                .unwrap()
-                .text()
-                .collect::<String>();
-
-            let period_selector = Selector::parse("span[class='from-date']").unwrap();
-            let period = fragment
-                .select(&period_selector)
-                .next()
-                .unwrap()
-                .text()
-                .collect::<String>();
-
-            let link = String::from(
-                fragment
-                    .select(&Selector::parse("a").unwrap())
-                    .next()
-                    .unwrap()
-                    .value()
-                    .attr("href")
-                    .unwrap(),
-            );
-
-            println!("Inserat {}", counter);
-            counter += 1;
-
-            prices.push(price);
-            positions.push(position);
-            dates.push(date);
-            periods.push(period);
-            links.push(link);
-        }
+        let place = place
+            .trim_start_matches("Ort")
+            .trim()
+            .replace("\n", "")
+            .to_string();
 
         Ok(Self {
-            size,
-            prices,
-            positions,
-            dates,
-            periods,
-            links,
+            price: price.to_owned(),
+            link: link.to_owned(),
+            address,
+            place,
+            from,
+            until,
         })
     }
+}
+
+async fn back_to_list(driver: &WebDriver) -> WebDriverResult<()> {
+    let back_elem = driver.find(By::Css("a[class='back']")).await?;
+    let back_page_link = back_elem.attr("href").await?.unwrap();
+    goto_link(driver, &back_page_link).await?;
+    Ok(())
+}
+
+fn rnd() -> u64 {
+    random_range(1..=4)
 }

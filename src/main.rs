@@ -3,6 +3,7 @@ use crate::wgzimmer::scrape;
 
 use dotenv::dotenv;
 use std::env;
+use std::fs::File;
 use thirtyfour::prelude::*;
 
 mod wgzimmer;
@@ -11,6 +12,12 @@ struct WGQuery<'a> {
     price_min: usize,
     price_max: usize,
     wg_state: &'a String,
+}
+
+struct Application {
+    name: String,
+    email: String,
+    msg: String,
 }
 
 #[tokio::main]
@@ -45,8 +52,17 @@ async fn main() -> WebDriverResult<()> {
         wg_state: &wg_states[0],
     };
 
+    let a = Application {
+        name: "hello".to_string(),
+        email: "hallo".to_string(),
+        msg: "ciao".to_string(),
+    };
+
     let path = handle_files();
-    scrape(&path, &driver, &q).await?;
+    File::create(&path).unwrap();
+    println!("Created file {:?}.", path);
+
+    scrape(&path, &driver, &q, &a).await?;
 
     driver.quit().await?;
 
