@@ -1,6 +1,6 @@
 use crate::WGQuery;
-use crate::handle_csv::write_to_csv;
-use core::num;
+use crate::handle_data::write_to_csv;
+
 use futures::future::join_all;
 use rand::random_range;
 use scraper::{Html, Selector};
@@ -50,8 +50,7 @@ pub async fn scrape<'a>(
     Ok(())
 }
 
-pub async fn search<'a>(driver: &WebDriver, query: &WGQuery<'a>) -> WebDriverResult<()> {
-    println!("Minimum price set to {}.", query.price_min);
+async fn search<'a>(driver: &WebDriver, query: &WGQuery<'a>) -> WebDriverResult<()> {
     sleep(Duration::from_secs(rnd())).await;
     driver
         .execute(
@@ -65,8 +64,8 @@ pub async fn search<'a>(driver: &WebDriver, query: &WGQuery<'a>) -> WebDriverRes
             vec![],
         )
         .await?;
+    println!("Minimum price set to {}.", query.price_min);
 
-    println!("Maximum price set to {}.", query.price_max);
     sleep(Duration::from_secs(rnd())).await;
     driver
         .execute(
@@ -80,8 +79,8 @@ pub async fn search<'a>(driver: &WebDriver, query: &WGQuery<'a>) -> WebDriverRes
             vec![],
         )
         .await?;
+    println!("Maximum price set to {}.", query.price_max);
 
-    println!("Wg state set to {}.", query.wg_state);
     sleep(Duration::from_secs(rnd())).await;
     let wg_state_button = driver
         .find(By::Css(format!(
@@ -90,6 +89,7 @@ pub async fn search<'a>(driver: &WebDriver, query: &WGQuery<'a>) -> WebDriverRes
         )))
         .await?;
     wg_state_button.click().await?;
+    println!("Wg state set to {}.", query.wg_state);
 
     sleep(Duration::from_secs(rnd())).await;
     driver
@@ -106,28 +106,27 @@ pub async fn search<'a>(driver: &WebDriver, query: &WGQuery<'a>) -> WebDriverRes
             b.click().await?;
         }
     }
-    println!("Done.");
 
     Ok(())
 }
 
-pub async fn get_num_pages(driver: &WebDriver) -> WebDriverResult<usize> {
+async fn get_num_pages(driver: &WebDriver) -> WebDriverResult<usize> {
     sleep(Duration::from_secs(rnd())).await;
     let pages_str = driver
-        .find(By::Css("span[class'counter']"))
+        .find(By::Css("span[class='counter']"))
         .await?
         .inner_html()
         .await?;
 
     match pages_str.find('/') {
-        Some(n) => Ok(pages_str[n..].trim().parse().unwrap()),
+        Some(n) => Ok(pages_str[(n + 1)..].trim().parse().unwrap()),
         None => {
-            panic!("Could not load new page");
+            panic!("Could not get number of pages");
         }
     }
 }
 
-pub async fn load_next_page(driver: &WebDriver) -> WebDriverResult<()> {
+async fn load_next_page(driver: &WebDriver) -> WebDriverResult<()> {
     sleep(Duration::from_secs(rnd() * 2)).await;
     driver
         .execute("window.scrollTo(0, document.body.scrollHeight);", vec![])
@@ -136,9 +135,7 @@ pub async fn load_next_page(driver: &WebDriver) -> WebDriverResult<()> {
     println!("Loading next page...");
     sleep(Duration::from_secs(rnd())).await;
 
-    let next_page_button = driver
-        .find(By::Css("a[class='next'][title='Nächstes Inserat']"))
-        .await?;
+    let next_page_button = driver.find(By::Css("a[class='next']")).await?;
     next_page_button.click().await?;
     println!("Next page has been loaded.");
 
@@ -155,7 +152,7 @@ pub struct Juice {
 }
 
 impl Juice {
-    pub async fn extract(driver: &WebDriver) -> WebDriverResult<Self> {
+    async fn extract(driver: &WebDriver) -> WebDriverResult<Self> {
         let wgs = driver
             .find_all(By::Css("li[class='search-result-entry search-mate-entry']"))
             .await?;
