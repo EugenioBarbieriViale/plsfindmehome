@@ -2,6 +2,7 @@ use crate::wgzimmer::Wg;
 
 use chrono::Local;
 use std::env;
+use std::fs::File;
 use std::fs::create_dir;
 use std::path::{Path, PathBuf};
 
@@ -23,6 +24,9 @@ pub fn handle_files() -> PathBuf {
 }
 
 pub fn write_to_csv(path: &Path, data: Vec<Vec<Wg>>) -> Result<(), csv::Error> {
+    File::create(&path).unwrap();
+    println!("Created file {:?}.", path);
+
     let mut wtr = csv::Writer::from_path(path)?;
 
     wtr.write_record(&["price", "link", "address", "place", "from", "until"])?;

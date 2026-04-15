@@ -3,7 +3,7 @@ use crate::wgzimmer::scrape;
 
 use dotenv::dotenv;
 use std::env;
-use std::fs::File;
+use std::fs::read_to_string;
 use thirtyfour::prelude::*;
 
 mod wgzimmer;
@@ -27,7 +27,7 @@ async fn main() -> WebDriverResult<()> {
 
     let mut caps = DesiredCapabilities::chrome();
     caps.add_arg("start-maximized")?;
-    caps.add_arg("enable-automation")?;
+    // caps.add_arg("enable-automation")?;
     caps.add_arg("--no-sandbox")?;
     caps.add_arg("--disable-dev-shm-usage")?;
     caps.add_arg("--disable-browser-side-navigation")?;
@@ -52,16 +52,14 @@ async fn main() -> WebDriverResult<()> {
         wg_state: &wg_states[0],
     };
 
+    let msg = read_to_string(env::var("MSG_TXT_PATH").unwrap()).unwrap();
     let a = Application {
-        name: "hello".to_string(),
-        email: "hallo".to_string(),
-        msg: "ciao".to_string(),
+        name: env::var("NAME").unwrap(),
+        email: env::var("EMAIL").unwrap(),
+        msg,
     };
 
     let path = handle_files();
-    File::create(&path).unwrap();
-    println!("Created file {:?}.", path);
-
     scrape(&path, &driver, &q, &a).await?;
 
     driver.quit().await?;

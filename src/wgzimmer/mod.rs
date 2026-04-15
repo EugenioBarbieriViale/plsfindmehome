@@ -25,7 +25,7 @@ pub async fn scrape<'a>(
     match consent_button {
         Ok(b) => b.click().await?,
         Err(_) => {
-            println!("No consent button to click");
+            eprintln!("No consent button to click");
         }
     }
 
@@ -37,8 +37,15 @@ pub async fn scrape<'a>(
 
     let mut data: Vec<Vec<Wg>> = vec![];
     for i in 0..num_pages {
-        println!("--- Extracting data from page {}/{} ---", i, num_pages);
-        data.push(scrape_page(driver, appl).await?);
+        println!("--- Page {}/{} ---", i, num_pages);
+        let page_data = match scrape_page(driver, appl).await {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("An error occured, skipping page: {}", e);
+                continue;
+            }
+        };
+        data.push(page_data);
     }
 
     match write_to_csv(path, data) {
@@ -46,7 +53,7 @@ pub async fn scrape<'a>(
             println!("Data successully saved to {:?}", path);
         }
         Err(e) => {
-            println!("Could not write data to {:?}: {:?}", path, e);
+            eprintln!("Could not write data to {:?}: {:?}", path, e);
         }
     }
 
@@ -69,9 +76,14 @@ async fn scrape_page(driver: &WebDriver, appl: &Application) -> WebDriverResult<
 
     let mut page_data: Vec<Wg> = vec![];
     for wg in str_wgs {
-        let price = get_price(&wg).unwrap();
-        let link = get_link(&wg).unwrap();
-        println!("{}", link);
+        let Some(price) = get_price(&wg) else {
+            eprintln!("Could not get price, skipping");
+            continue;
+        };
+        let Some(link) = get_link(&wg) else {
+            eprintln!("Could not get link, skipping");
+            continue;
+        };
 
         goto_link(driver, &link).await?;
         sleep(Duration::from_secs(rnd())).await;
