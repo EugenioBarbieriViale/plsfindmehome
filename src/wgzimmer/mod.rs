@@ -48,12 +48,16 @@ pub async fn scrape<'a>(
         data.push(page_data);
     }
 
-    match write_to_csv(path, data) {
-        Ok(_) => {
-            println!("Data successully saved to {:?}", path);
-        }
-        Err(e) => {
-            eprintln!("Could not write data to {:?}: {:?}", path, e);
+    if data.len() == 0 {
+        println!("No data has been collected");
+    } else {
+        match write_to_csv(path, data) {
+            Ok(_) => {
+                println!("Data successully saved to {:?}", path);
+            }
+            Err(e) => {
+                eprintln!("Could not write data to {:?}: {:?}", path, e);
+            }
         }
     }
 
@@ -92,6 +96,9 @@ async fn scrape_page(driver: &WebDriver, appl: &Application) -> WebDriverResult<
         println!("{:?}", wg_info);
 
         page_data.push(wg_info);
+
+        sleep(Duration::from_secs(rnd())).await;
+        driver.refresh().await?;
 
         sleep(Duration::from_secs(appl.wait_time)).await;
         send_appl(driver, appl).await?;
@@ -305,6 +312,6 @@ async fn back_to_list(driver: &WebDriver) -> WebDriverResult<()> {
     Ok(())
 }
 
-fn rnd() -> u64 {
-    random_range(1..=4)
+pub fn rnd() -> u64 {
+    random_range(2..=5)
 }

@@ -2,6 +2,7 @@ use crate::wgzimmer::handle_data::handle_files;
 use crate::wgzimmer::scrape;
 
 use dotenv::dotenv;
+use serde_json;
 use std::env;
 use std::fs::read_to_string;
 use thirtyfour::prelude::*;
@@ -54,6 +55,8 @@ async fn main() -> WebDriverResult<()> {
     };
 
     let msg = read_to_string(env::var("MSG_TXT_PATH").unwrap()).unwrap();
+    let msg = serde_json::to_string(&msg).unwrap();
+
     let a = Application {
         name: env::var("NAME").unwrap(),
         email: env::var("EMAIL").unwrap(),

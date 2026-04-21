@@ -1,11 +1,12 @@
 use crate::Application;
+use crate::wgzimmer::rnd;
 use thirtyfour::prelude::*;
 use tokio::time::{Duration, sleep};
 
 pub async fn send_appl(driver: &WebDriver, a: &Application) -> WebDriverResult<()> {
     open_tent(driver).await?;
 
-    sleep(Duration::from_secs(1)).await;
+    sleep(Duration::from_secs(rnd())).await;
     driver
         .execute(
             format!(
@@ -19,7 +20,7 @@ pub async fn send_appl(driver: &WebDriver, a: &Application) -> WebDriverResult<(
         )
         .await?;
 
-    sleep(Duration::from_secs(1)).await;
+    sleep(Duration::from_secs(rnd())).await;
     driver
         .execute(
             format!(
@@ -33,12 +34,12 @@ pub async fn send_appl(driver: &WebDriver, a: &Application) -> WebDriverResult<(
         )
         .await?;
 
-    sleep(Duration::from_secs(1)).await;
+    sleep(Duration::from_secs(rnd())).await;
     driver
         .execute(
             format!(
                 "var el = document.querySelector(\"textarea[id='senderText']\");
-                 el.value = '{}';
+                 el.value = \"{}\";
                  el.dispatchEvent(new Event('change', {{ bubbles: true }}));
                  el.dispatchEvent(new Event('input', {{ bubbles: true }}));",
                 a.msg

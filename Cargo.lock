@@ -948,6 +948,7 @@ dependencies = [
  "futures",
  "rand 0.10.0",
  "scraper",
+ "serde_json",
  "thirtyfour",
  "tokio",
 ]
