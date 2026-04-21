@@ -93,6 +93,7 @@ async fn scrape_page(driver: &WebDriver, appl: &Application) -> WebDriverResult<
 
         page_data.push(wg_info);
 
+        sleep(Duration::from_secs(appl.wait_time)).await;
         send_appl(driver, appl).await?;
 
         sleep(Duration::from_secs(rnd())).await;

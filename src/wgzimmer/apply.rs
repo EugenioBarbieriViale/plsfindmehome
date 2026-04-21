@@ -4,8 +4,8 @@ use tokio::time::{Duration, sleep};
 
 pub async fn send_appl(driver: &WebDriver, a: &Application) -> WebDriverResult<()> {
     open_tent(driver).await?;
-    sleep(Duration::from_secs(3)).await;
 
+    sleep(Duration::from_secs(1)).await;
     driver
         .execute(
             format!(
@@ -19,6 +19,7 @@ pub async fn send_appl(driver: &WebDriver, a: &Application) -> WebDriverResult<(
         )
         .await?;
 
+    sleep(Duration::from_secs(1)).await;
     driver
         .execute(
             format!(
@@ -32,6 +33,7 @@ pub async fn send_appl(driver: &WebDriver, a: &Application) -> WebDriverResult<(
         )
         .await?;
 
+    sleep(Duration::from_secs(1)).await;
     driver
         .execute(
             format!(
@@ -45,14 +47,13 @@ pub async fn send_appl(driver: &WebDriver, a: &Application) -> WebDriverResult<(
         )
         .await?;
 
-    // submit_appl(driver).await?;
+    sleep(Duration::from_secs(1)).await;
+    submit_appl(driver).await?;
 
     Ok(())
 }
 
 async fn open_tent(driver: &WebDriver) -> WebDriverResult<()> {
-    sleep(Duration::from_secs(1)).await;
-
     let elem = driver.find(By::Css("a[class='small-link']")).await?;
     let js_box = elem.attr("onclick").await?.unwrap();
 

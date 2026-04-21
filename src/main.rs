@@ -18,6 +18,7 @@ struct Application {
     name: String,
     email: String,
     msg: String,
+    wait_time: u64,
 }
 
 #[tokio::main]
@@ -57,6 +58,7 @@ async fn main() -> WebDriverResult<()> {
         name: env::var("NAME").unwrap(),
         email: env::var("EMAIL").unwrap(),
         msg,
+        wait_time: 5,
     };
 
     let path = handle_files();
