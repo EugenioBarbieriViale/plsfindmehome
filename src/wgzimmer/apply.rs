@@ -39,7 +39,7 @@ pub async fn send_appl(driver: &WebDriver, a: &Application) -> WebDriverResult<(
         .execute(
             format!(
                 "var el = document.querySelector(\"textarea[id='senderText']\");
-                 el.value = \"{}\";
+                 el.value = {};
                  el.dispatchEvent(new Event('change', {{ bubbles: true }}));
                  el.dispatchEvent(new Event('input', {{ bubbles: true }}));",
                 a.msg
