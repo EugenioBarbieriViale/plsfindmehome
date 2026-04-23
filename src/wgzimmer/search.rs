@@ -8,7 +8,38 @@ pub async fn perform_search<'a>(driver: &WebDriver, query: &WGQuery<'a>) -> WebD
     sleep(Duration::from_secs(rnd())).await;
     driver.refresh().await?;
 
+    perform_actions(driver).await.unwrap_or_else(|err| {
+        eprintln!("Could not perform actions: {err}");
+    });
+
     sleep(Duration::from_secs(rnd())).await;
+    make_query(driver, query).await?;
+
+    sleep(Duration::from_secs(rnd())).await;
+    driver
+        .execute("window.scrollTo(0, document.body.scrollHeight);", vec![])
+        .await?;
+
+    // let start_search = driver
+    //     .find(By::Css("input[type='hidden'][name='startSearch']"))
+    //     .await
+    //     .unwrap();
+    // println!("{}", start_search.text().await?);
+    // function submitForm() {
+    //     grecaptcha.execute(siteKey, {action: '//form///wgzimmer/search/mate/submitForm'})
+    //         .then(function (token) {
+    //             document.getElementById('g-recaptcha-response').value = token;
+    //             document.searchMateForm.submit();
+    //         });
+    // }
+
+    sleep(Duration::from_secs(rnd())).await;
+    press_search_btn(driver).await?;
+
+    Ok(())
+}
+
+async fn make_query<'a>(driver: &WebDriver, query: &WGQuery<'a>) -> WebDriverResult<()> {
     driver
         .execute(
             format!(
@@ -48,11 +79,10 @@ pub async fn perform_search<'a>(driver: &WebDriver, query: &WGQuery<'a>) -> WebD
     wg_state_button.click().await?;
     println!("Wg state set to {}.", query.wg_state);
 
-    sleep(Duration::from_secs(rnd())).await;
-    driver
-        .execute("window.scrollTo(0, document.body.scrollHeight);", vec![])
-        .await?;
+    Ok(())
+}
 
+async fn press_search_btn(driver: &WebDriver) -> WebDriverResult<()> {
     println!("Searching...");
     sleep(Duration::from_secs(rnd())).await;
     let search_button = driver.find(By::Css("input[value='Search']")).await;
@@ -63,6 +93,34 @@ pub async fn perform_search<'a>(driver: &WebDriver, query: &WGQuery<'a>) -> WebD
             b.click().await?;
         }
     }
+    Ok(())
+}
+
+async fn perform_actions(driver: &WebDriver) -> WebDriverResult<()> {
+    let selectors = driver.find_all(By::Css("div[class='selector']")).await?;
+    for s in selectors {
+        sleep(Duration::from_secs(rnd())).await;
+        let offset = 10 + (-1 as i64).pow(rnd() as u32);
+
+        driver
+            .action_chain_with_delay(None, Some(Duration::from_secs(rnd())))
+            .move_to_element_with_offset(&s, offset, -offset)
+            .click()
+            .perform()
+            .await?;
+    }
+
+    sleep(Duration::from_secs(rnd())).await;
+    let e = driver
+        .find(By::Css("span[class='title small-block']"))
+        .await?;
+
+    driver
+        .action_chain_with_delay(None, Some(Duration::from_secs(rnd())))
+        .move_to_element_center(&e)
+        .click()
+        .perform()
+        .await?;
 
     Ok(())
 }
