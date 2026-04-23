@@ -22,6 +22,7 @@ pub async fn scrape<'a>(
     driver: &WebDriver,
     query: &WGQuery<'a>,
     appl: &Application,
+    all_links: &Vec<String>,
 ) -> WebDriverResult<()> {
     sleep(Duration::from_secs(rnd())).await;
     click_consent_button(driver).await?;
@@ -32,7 +33,7 @@ pub async fn scrape<'a>(
     sleep(Duration::from_secs(rnd())).await;
     let num_pages = get_num_pages(driver).await?;
 
-    let data = get_data(driver, appl, num_pages).await;
+    let data = get_data(driver, appl, num_pages, all_links).await;
 
     match data {
         Some(data) => match write_to_csv(path, data) {
@@ -51,7 +52,34 @@ pub async fn scrape<'a>(
     Ok(())
 }
 
-async fn scrape_page(driver: &WebDriver, appl: &Application) -> WebDriverResult<Vec<Wg>> {
+async fn get_data(
+    driver: &WebDriver,
+    appl: &Application,
+    num_pages: usize,
+    all_links: &Vec<String>,
+) -> Option<Vec<Vec<Wg>>> {
+    let mut data: Vec<Vec<Wg>> = vec![];
+
+    for i in 0..num_pages {
+        println!("--- Page {}/{} ---", i, num_pages);
+        let page_data = match scrape_page(driver, appl, all_links).await {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("An error occured, skipping page: {}", e);
+                continue;
+            }
+        };
+        data.push(page_data);
+    }
+
+    Some(data)
+}
+
+async fn scrape_page(
+    driver: &WebDriver,
+    appl: &Application,
+    all_links: &Vec<String>,
+) -> WebDriverResult<Vec<Wg>> {
     // unnecesary long, could just retrive price and link directly - minor fix
     let wgs = driver
         .find_all(By::Css("li[class='search-result-entry search-mate-entry']"))
@@ -67,6 +95,8 @@ async fn scrape_page(driver: &WebDriver, appl: &Application) -> WebDriverResult<
         .collect::<Result<_, _>>()?;
 
     let mut page_data: Vec<Wg> = vec![];
+    let mut count = 1;
+
     for wg in str_wgs {
         let Some(price) = get_price(&wg) else {
             eprintln!("Could not get price, skipping");
@@ -77,19 +107,41 @@ async fn scrape_page(driver: &WebDriver, appl: &Application) -> WebDriverResult<
             continue;
         };
 
-        goto_link(driver, &link).await?;
+        if all_links.contains(&link) {
+            println!("This wg has already been processed in the past, skipping: {link}");
+            continue;
+        }
+
+        if let Err(err) = goto_link(driver, &link).await {
+            eprintln!("Could not go to link {link}, skipping: {err}");
+            continue;
+        }
+
         sleep(Duration::from_secs(rnd())).await;
 
-        let wg_info: Wg = Wg::extract_info(&driver, &price, &link).await?;
-        println!("{:?}", wg_info);
-
-        page_data.push(wg_info);
+        let wg_info: Wg = match Wg::extract_info(&driver, &price, &link).await {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("Could not extract info of wg, skipping: {e}");
+                continue;
+            }
+        };
+        println!("{count}/{size}: {:?}", wg_info);
 
         sleep(Duration::from_secs(appl.wait_time)).await;
-        send_appl(driver, appl).await?;
+        if let Err(err) = send_appl(driver, appl).await {
+            eprintln!("Could not send_application, skipping: {err}");
+            continue;
+        }
+
+        page_data.push(wg_info);
+        count += 1;
 
         sleep(Duration::from_secs(rnd())).await;
-        back_to_list(driver).await?;
+        if let Err(err) = back_to_list(driver).await {
+            eprintln!("Could not go back to the list, exiting: {err}");
+            return Ok(page_data);
+        };
     }
 
     sleep(Duration::from_secs(rnd() * 2)).await;
@@ -132,8 +184,8 @@ impl Wg {
 
         let ps = container.find_all(By::Tag("p")).await?;
 
-        let address = ps[0].text().await?;
-        let place = ps[1].text().await?;
+        let address = ps[1].text().await?;
+        let place = ps[0].text().await?;
 
         let address = address
             .trim_start_matches("Adresse")
@@ -156,28 +208,6 @@ impl Wg {
             until,
         })
     }
-}
-
-async fn get_data(
-    driver: &WebDriver,
-    appl: &Application,
-    num_pages: usize,
-) -> Option<Vec<Vec<Wg>>> {
-    let mut data: Vec<Vec<Wg>> = vec![];
-
-    for i in 0..num_pages {
-        println!("--- Page {}/{} ---", i, num_pages);
-        let page_data = match scrape_page(driver, appl).await {
-            Ok(v) => v,
-            Err(e) => {
-                eprintln!("An error occured, skipping page: {}", e);
-                continue;
-            }
-        };
-        data.push(page_data);
-    }
-
-    Some(data)
 }
 
 pub fn rnd() -> u64 {

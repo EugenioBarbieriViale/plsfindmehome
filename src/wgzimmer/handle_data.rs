@@ -1,13 +1,11 @@
 use crate::wgzimmer::Wg;
 
 use chrono::Local;
-use std::env;
-use std::fs::File;
-use std::fs::create_dir;
+use std::fs::{File, create_dir, read_dir};
+use std::io::Error;
 use std::path::{Path, PathBuf};
 
-pub fn handle_files() -> PathBuf {
-    let dir_path = env::var("DATA_PATH").unwrap().to_owned();
+pub fn handle_files(dir_path: &String) -> PathBuf {
     let csv_file = format!("{}.csv", Local::now().to_string()).replace(" ", "_");
 
     match create_dir(Path::new(&dir_path)) {
@@ -38,4 +36,21 @@ pub fn write_to_csv(path: &Path, data: Vec<Vec<Wg>>) -> Result<(), csv::Error> {
     wtr.flush()?;
 
     Ok(())
+}
+
+pub fn get_all_links(dir_path: &String, col_index: usize) -> Result<Vec<String>, csv::Error> {
+    let entries = read_dir(Path::new(dir_path))?
+        .map(|res| res.map(|e| e.path()))
+        .collect::<Result<Vec<_>, Error>>()?;
+
+    let mut all_links = vec![];
+
+    for e in entries {
+        let mut rdr = csv::Reader::from_path(&e)?;
+        for r in rdr.records() {
+            all_links.push(r?.get(col_index).unwrap().to_string());
+        }
+    }
+
+    Ok(all_links)
 }

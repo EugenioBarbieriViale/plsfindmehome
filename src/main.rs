@@ -1,4 +1,4 @@
-use crate::wgzimmer::handle_data::handle_files;
+use crate::wgzimmer::handle_data::{get_all_links, handle_files};
 use crate::wgzimmer::scrape;
 
 use dotenv::dotenv;
@@ -64,8 +64,12 @@ async fn main() -> WebDriverResult<()> {
         wait_time: 5,
     };
 
-    let path = handle_files();
-    scrape(&path, &driver, &q, &a).await?;
+    let dir_path = env::var("DATA_PATH").unwrap();
+    let path = handle_files(&dir_path);
+
+    let all_links = get_all_links(&dir_path, 1).unwrap();
+
+    scrape(&path, &driver, &q, &a, &all_links).await?;
 
     driver.quit().await?;
 
