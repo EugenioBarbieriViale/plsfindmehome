@@ -6,6 +6,7 @@ use search::perform_search;
 use utils::*;
 
 use futures::future::join_all;
+use scraper::Html;
 use std::process;
 use thirtyfour::prelude::*;
 use tokio::time::{Duration, sleep};
@@ -79,11 +80,13 @@ async fn scrape_page(
 
     let mut count = 1;
     for wg in str_wgs {
-        let Some(price) = get_price(&wg) else {
+        let f = Html::parse_fragment(&wg);
+
+        let Some(price) = get_price(&f) else {
             eprintln!("Could not get price, skipping");
             continue;
         };
-        let Some(link) = get_link(&wg) else {
+        let Some(link) = get_link(&f) else {
             eprintln!("Could not get link, skipping");
             continue;
         };

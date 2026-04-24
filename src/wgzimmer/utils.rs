@@ -81,8 +81,7 @@ pub async fn goto_link(driver: &WebDriver, link: &String) -> WebDriverResult<()>
     Ok(())
 }
 
-pub fn get_link(wg: &String) -> Option<String> {
-    let fragment = Html::parse_fragment(wg);
+pub fn get_link(fragment: &Html) -> Option<String> {
     let link = String::from(
         fragment
             .select(&Selector::parse("a").unwrap())
@@ -96,9 +95,7 @@ pub fn get_link(wg: &String) -> Option<String> {
     Some(link)
 }
 
-pub fn get_price(wg: &String) -> Option<String> {
-    let fragment = Html::parse_fragment(wg);
-
+pub fn get_price(fragment: &Html) -> Option<String> {
     let price_selector = Selector::parse("span[class='cost']").unwrap();
     let price = fragment
         .select(&price_selector)
