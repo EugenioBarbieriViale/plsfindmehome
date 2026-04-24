@@ -1,5 +1,5 @@
 use crate::Application;
-use crate::wgzimmer::rnd;
+use crate::wgzimmer::{Direction, rnd, scroll_to};
 use thirtyfour::prelude::*;
 use tokio::time::{Duration, sleep};
 
@@ -63,9 +63,10 @@ async fn open_tent(driver: &WebDriver) -> WebDriverResult<()> {
 }
 
 async fn submit_appl(driver: &WebDriver) -> WebDriverResult<()> {
-    let submit_button = driver
+    let submit_btn = driver
         .find(By::Css("input[class='submit-inline-mail']"))
         .await?;
-    submit_button.click().await?;
+    scroll_to(driver, Direction::ToElement(submit_btn.clone())).await?;
+    submit_btn.click().await?;
     Ok(())
 }

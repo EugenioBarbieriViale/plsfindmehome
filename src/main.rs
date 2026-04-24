@@ -29,12 +29,11 @@ async fn main() -> WebDriverResult<()> {
 
     let mut caps = DesiredCapabilities::chrome();
     caps.add_arg("start-maximized")?;
-    // caps.add_arg("enable-automation")?;
     caps.add_arg("--no-sandbox")?;
     caps.add_arg("--disable-dev-shm-usage")?;
     caps.add_arg("--disable-browser-side-navigation")?;
     caps.add_arg("--disable-gpu")?;
-    // caps.add_arg("--headless")?;
+    caps.add_arg("--headless")?;
 
     let driver = WebDriver::new(format!("http://localhost:{}", port), caps).await?;
 
@@ -61,7 +60,7 @@ async fn main() -> WebDriverResult<()> {
         name: env::var("NAME").unwrap(),
         email: env::var("EMAIL").unwrap(),
         msg,
-        wait_time: 5,
+        wait_time: 120,
     };
 
     let dir_path = env::var("DATA_PATH").unwrap();

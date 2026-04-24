@@ -7,8 +7,8 @@ use search::perform_search;
 use utils::*;
 
 use futures::future::join_all;
-use rand::random_range;
 use std::path::Path;
+use std::process;
 use thirtyfour::prelude::*;
 use tokio::time::{Duration, sleep};
 
@@ -25,12 +25,20 @@ pub async fn scrape<'a>(
     all_links: &Vec<String>,
 ) -> WebDriverResult<()> {
     sleep(Duration::from_secs(rnd())).await;
+    driver.refresh().await?;
+
+    apply_stealth(driver).await.unwrap_or_else(|err| {
+        eprintln!("Could not apply stealth, exiting: {err}");
+        process::exit(1);
+    });
+
+    sleep(Duration::from_secs(rnd())).await;
     click_consent_button(driver).await?;
 
     sleep(Duration::from_secs(rnd())).await;
     perform_search(driver, query).await?;
 
-    sleep(Duration::from_secs(rnd())).await;
+    sleep(Duration::from_secs(1)).await;
     let num_pages = get_num_pages(driver).await?;
 
     let data = get_data(driver, appl, num_pages, all_links).await;
@@ -117,8 +125,6 @@ async fn scrape_page(
             continue;
         }
 
-        sleep(Duration::from_secs(rnd())).await;
-
         let wg_info: Wg = match Wg::extract_info(&driver, &price, &link).await {
             Ok(v) => v,
             Err(e) => {
@@ -130,7 +136,7 @@ async fn scrape_page(
 
         sleep(Duration::from_secs(appl.wait_time)).await;
         if let Err(err) = send_appl(driver, appl).await {
-            eprintln!("Could not send_application, skipping: {err}");
+            eprintln!("Could not send application, skipping: {err}");
             continue;
         }
 
@@ -144,7 +150,7 @@ async fn scrape_page(
         };
     }
 
-    sleep(Duration::from_secs(rnd() * 2)).await;
+    sleep(Duration::from_secs(rnd())).await;
     load_next_page(driver).await?;
 
     Ok(page_data)
@@ -208,8 +214,4 @@ impl Wg {
             until,
         })
     }
-}
-
-pub fn rnd() -> u64 {
-    random_range(2..=5)
 }
