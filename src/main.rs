@@ -1,11 +1,12 @@
-use crate::wgzimmer::handle_data::{get_all_links, handle_files};
-use crate::wgzimmer::scrape;
+use crate::wgzimmer::handle_data::*;
+use crate::wgzimmer::{Wg, scrape};
 
 use dotenv::dotenv;
 use serde_json;
 use std::env;
 use std::fs::read_to_string;
 use thirtyfour::prelude::*;
+use tokio::signal;
 
 mod wgzimmer;
 
@@ -33,7 +34,7 @@ async fn main() -> WebDriverResult<()> {
     caps.add_arg("--disable-dev-shm-usage")?;
     caps.add_arg("--disable-browser-side-navigation")?;
     caps.add_arg("--disable-gpu")?;
-    caps.add_arg("--headless")?;
+    // caps.add_arg("--headless")?;
 
     let driver = WebDriver::new(format!("http://localhost:{}", port), caps).await?;
 
@@ -64,13 +65,37 @@ async fn main() -> WebDriverResult<()> {
     };
 
     let dir_path = env::var("DATA_PATH").unwrap();
-    let path = handle_files(&dir_path);
+    let path = init(&dir_path);
 
     let all_links = get_all_links(&dir_path, 1).unwrap();
 
-    scrape(&path, &driver, &q, &a, &all_links).await?;
+    let mut collected: Option<Vec<Wg>> = None;
+    tokio::select! {
+        res = scrape(&driver, &q, &a, &all_links, &mut collected) => {
+            if let Err(e) = res {
+                eprintln!("Could not scrape: {:?}", e);
+            }
+        }
+        _ = signal::ctrl_c() => {
+            println!("Interrupted, gracefully shutting down...");
+        }
+    }
 
     driver.quit().await?;
+
+    match collected {
+        Some(data) => match save(&path, data) {
+            Ok(_) => {
+                println!("Data successully saved to {:?}", path);
+            }
+            Err(e) => {
+                eprintln!("Could not write data to {:?}: {:?}", path, e);
+            }
+        },
+        None => {
+            println!("No data has been collected");
+        }
+    }
 
     Ok(())
 }

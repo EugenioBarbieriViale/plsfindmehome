@@ -5,7 +5,7 @@ use std::fs::{File, create_dir, read_dir};
 use std::io::Error;
 use std::path::{Path, PathBuf};
 
-pub fn handle_files(dir_path: &String) -> PathBuf {
+pub fn init(dir_path: &String) -> PathBuf {
     let csv_file = format!("{}.csv", Local::now().to_string()).replace(" ", "_");
 
     match create_dir(Path::new(&dir_path)) {
@@ -21,17 +21,15 @@ pub fn handle_files(dir_path: &String) -> PathBuf {
     path.to_owned()
 }
 
-pub fn write_to_csv(path: &Path, data: Vec<Vec<Wg>>) -> Result<(), csv::Error> {
+pub fn save(path: &Path, data: Vec<Wg>) -> Result<(), csv::Error> {
     File::create(&path).unwrap();
     println!("Created file {:?}.", path);
 
     let mut wtr = csv::Writer::from_path(path)?;
 
     wtr.write_record(&["price", "link", "address", "place", "from", "until"])?;
-    for page_data in data {
-        for wg in page_data {
-            wtr.write_record(&[wg.price, wg.link, wg.address, wg.place, wg.from, wg.until])?;
-        }
+    for wg in data {
+        wtr.write_record(&[wg.price, wg.link, wg.address, wg.place, wg.from, wg.until])?;
     }
     wtr.flush()?;
 
@@ -44,7 +42,6 @@ pub fn get_all_links(dir_path: &String, col_index: usize) -> Result<Vec<String>,
         .collect::<Result<Vec<_>, Error>>()?;
 
     let mut all_links = vec![];
-
     for e in entries {
         let mut rdr = csv::Reader::from_path(&e)?;
         for r in rdr.records() {

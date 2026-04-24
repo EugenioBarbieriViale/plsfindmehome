@@ -2,12 +2,10 @@ use crate::Application;
 use crate::WGQuery;
 
 use apply::send_appl;
-use handle_data::write_to_csv;
 use search::perform_search;
 use utils::*;
 
 use futures::future::join_all;
-use std::path::Path;
 use std::process;
 use thirtyfour::prelude::*;
 use tokio::time::{Duration, sleep};
@@ -18,11 +16,11 @@ mod search;
 mod utils;
 
 pub async fn scrape<'a>(
-    path: &Path,
     driver: &WebDriver,
     query: &WGQuery<'a>,
     appl: &Application,
     all_links: &Vec<String>,
+    collected: &mut Option<Vec<Wg>>,
 ) -> WebDriverResult<()> {
     sleep(Duration::from_secs(rnd())).await;
     driver.refresh().await?;
@@ -41,54 +39,31 @@ pub async fn scrape<'a>(
     sleep(Duration::from_secs(1)).await;
     let num_pages = get_num_pages(driver).await?;
 
-    let data = get_data(driver, appl, num_pages, all_links).await;
-
-    match data {
-        Some(data) => match write_to_csv(path, data) {
-            Ok(_) => {
-                println!("Data successully saved to {:?}", path);
-            }
-            Err(e) => {
-                eprintln!("Could not write data to {:?}: {:?}", path, e);
-            }
-        },
-        None => {
-            println!("No data has been collected");
-        }
-    }
-
-    Ok(())
-}
-
-async fn get_data(
-    driver: &WebDriver,
-    appl: &Application,
-    num_pages: usize,
-    all_links: &Vec<String>,
-) -> Option<Vec<Vec<Wg>>> {
-    let mut data: Vec<Vec<Wg>> = vec![];
+    let mut data: Vec<Wg> = vec![];
 
     for i in 0..num_pages {
         println!("--- Page {}/{} ---", i, num_pages);
-        let page_data = match scrape_page(driver, appl, all_links).await {
+        match scrape_page(driver, appl, all_links, &mut data).await {
             Ok(v) => v,
             Err(e) => {
                 eprintln!("An error occured, skipping page: {}", e);
                 continue;
             }
         };
-        data.push(page_data);
     }
 
-    Some(data)
+    *collected = Some(data);
+
+    Ok(())
 }
 
 async fn scrape_page(
     driver: &WebDriver,
     appl: &Application,
     all_links: &Vec<String>,
-) -> WebDriverResult<Vec<Wg>> {
-    // unnecesary long, could just retrive price and link directly - minor fix
+    data: &mut Vec<Wg>,
+) -> WebDriverResult<()> {
+    // unnecesary long, could just retrive price and link directly - minor fix (but too lazy)
     let wgs = driver
         .find_all(By::Css("li[class='search-result-entry search-mate-entry']"))
         .await?;
@@ -102,9 +77,7 @@ async fn scrape_page(
         .into_iter()
         .collect::<Result<_, _>>()?;
 
-    let mut page_data: Vec<Wg> = vec![];
     let mut count = 1;
-
     for wg in str_wgs {
         let Some(price) = get_price(&wg) else {
             eprintln!("Could not get price, skipping");
@@ -134,29 +107,36 @@ async fn scrape_page(
         };
         println!("{count}/{size}: {:?}", wg_info);
 
+        if data.contains(&wg_info) {
+            println!("This wg is a duplicate, skipping: {link}");
+            continue;
+        }
+
+        println!("Sending application...");
         sleep(Duration::from_secs(appl.wait_time)).await;
         if let Err(err) = send_appl(driver, appl).await {
             eprintln!("Could not send application, skipping: {err}");
             continue;
         }
+        println!("Application sent.");
 
-        page_data.push(wg_info);
+        data.push(wg_info);
         count += 1;
 
         sleep(Duration::from_secs(rnd())).await;
         if let Err(err) = back_to_list(driver).await {
             eprintln!("Could not go back to the list, exiting: {err}");
-            return Ok(page_data);
+            return Ok(());
         };
     }
 
     sleep(Duration::from_secs(rnd())).await;
     load_next_page(driver).await?;
 
-    Ok(page_data)
+    Ok(())
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Wg {
     price: String,
     link: String,
