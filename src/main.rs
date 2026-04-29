@@ -1,4 +1,4 @@
-use crate::wgzimmer::handle_data::*;
+use crate::wgzimmer::checkpoint::*;
 use crate::wgzimmer::{Wg, scrape};
 
 use dotenv::dotenv;
@@ -61,11 +61,11 @@ async fn main() -> WebDriverResult<()> {
         name: env::var("NAME").unwrap(),
         email: env::var("EMAIL").unwrap(),
         msg,
-        wait_time: 120,
+        wait_time: 30,
     };
 
     let dir_path = env::var("DATA_PATH").unwrap();
-    let path = init(&dir_path);
+    let (csv_file, path) = init(&dir_path);
 
     let all_links = get_all_links(&dir_path, 1).unwrap();
 

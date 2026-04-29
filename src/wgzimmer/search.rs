@@ -58,7 +58,11 @@ async fn make_query<'a>(driver: &WebDriver, query: &WGQuery<'a>) -> WebDriverRes
             query.wg_state
         )))
         .await?;
+
+    sleep(Duration::from_secs(1)).await;
+    scroll_to(driver, Direction::ToElement(wg_state_button.clone())).await?;
     wg_state_button.click().await?;
+
     println!("Wg state set to {}.", query.wg_state);
 
     Ok(())
@@ -66,13 +70,15 @@ async fn make_query<'a>(driver: &WebDriver, query: &WGQuery<'a>) -> WebDriverRes
 
 async fn press_search_btn(driver: &WebDriver) -> WebDriverResult<()> {
     let search_button = driver.find(By::Css("input[value='Search']")).await;
-    match search_button {
-        Ok(v) => v.click().await?,
-        Err(_) => {
-            let b = driver.find(By::Css("input[value='Suchen']")).await?;
-            b.click().await?;
-        }
-    }
+    let element = match search_button {
+        Ok(v) => v,
+        Err(_) => driver.find(By::Css("input[value='Suchen']")).await?,
+    };
+
+    scroll_to(driver, Direction::ToElement(element.clone())).await?;
+    sleep(Duration::from_secs(1)).await;
+    element.click().await?;
+
     Ok(())
 }
 

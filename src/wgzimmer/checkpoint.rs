@@ -5,7 +5,7 @@ use std::fs::{File, create_dir, read_dir};
 use std::io::Error;
 use std::path::{Path, PathBuf};
 
-pub fn init(dir_path: &String) -> PathBuf {
+pub fn init(dir_path: &String) -> (String, PathBuf) {
     let csv_file = format!("{}.csv", Local::now().to_string()).replace(" ", "_");
 
     match create_dir(Path::new(&dir_path)) {
@@ -18,7 +18,7 @@ pub fn init(dir_path: &String) -> PathBuf {
     let dir_path = format!("{dir_path}{csv_file}");
     let path = Path::new(&dir_path);
 
-    path.to_owned()
+    (csv_file, path.to_owned())
 }
 
 pub fn save(path: &Path, data: Vec<Wg>) -> Result<(), csv::Error> {

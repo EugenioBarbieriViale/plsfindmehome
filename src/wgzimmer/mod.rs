@@ -12,7 +12,7 @@ use thirtyfour::prelude::*;
 use tokio::time::{Duration, sleep};
 
 mod apply;
-pub mod handle_data;
+pub mod checkpoint;
 mod search;
 mod utils;
 
