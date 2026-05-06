@@ -52,7 +52,7 @@ async fn main() -> WebDriverResult<()> {
     let q = WGQuery {
         price_min: 300,
         price_max: 800,
-        wg_state: &wg_states[0],
+        wg_state: &wg_states[1],
     };
 
     let msg = read_to_string(env::var("MSG_TXT_PATH").unwrap()).unwrap();
@@ -82,8 +82,7 @@ async fn main() -> WebDriverResult<()> {
         }
     }
 
-    sleep(Duration::from_secs(2)).await;
-    // driver.quit().await?;
+    driver.quit().await?;
 
     match collected {
         Some(data) => match save(&path, data) {
