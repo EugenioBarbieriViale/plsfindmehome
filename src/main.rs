@@ -7,6 +7,7 @@ use std::env;
 use std::fs::read_to_string;
 use thirtyfour::prelude::*;
 use tokio::signal;
+use tokio::time::{Duration, sleep};
 
 mod wgzimmer;
 
@@ -81,7 +82,8 @@ async fn main() -> WebDriverResult<()> {
         }
     }
 
-    driver.quit().await?;
+    sleep(Duration::from_secs(2)).await;
+    // driver.quit().await?;
 
     match collected {
         Some(data) => match save(&path, data) {

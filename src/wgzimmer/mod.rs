@@ -38,7 +38,13 @@ pub async fn scrape<'a>(
     perform_search(driver, query).await?;
 
     sleep(Duration::from_secs(1)).await;
-    let num_pages = get_num_pages(driver).await?;
+    let num_pages = match get_num_pages(driver).await {
+        Ok(n) => n,
+        Err(_) => {
+            println!("Found only one page.");
+            1
+        }
+    };
 
     let mut data: Vec<Wg> = vec![];
 
@@ -67,7 +73,8 @@ async fn scrape_page(
     // unnecesary long, could just retrive price and link directly - minor fix (but too lazy)
     let wgs = driver
         .find_all(By::Css("li[class='search-result-entry search-mate-entry']"))
-        .await?;
+        .await
+        .expect("Could not get all links.");
 
     let size = wgs.len();
     println!("{} wgs found.", size);
@@ -134,7 +141,10 @@ async fn scrape_page(
     }
 
     sleep(Duration::from_secs(rnd())).await;
-    load_next_page(driver).await?;
+    match load_next_page(driver).await {
+        Ok(_) => (),
+        Err(_) => eprintln!("Could not load next page."),
+    }
 
     Ok(())
 }
