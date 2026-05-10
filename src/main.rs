@@ -1,5 +1,5 @@
 use crate::wgzimmer::checkpoint::*;
-use crate::wgzimmer::{Wg, scrape};
+use crate::wgzimmer::scrape::{Wg, scrape};
 
 use dotenv::dotenv;
 use serde_json;
@@ -52,7 +52,7 @@ async fn main() -> WebDriverResult<()> {
     let q = WGQuery {
         price_min: 300,
         price_max: 800,
-        wg_state: &wg_states[1],
+        wg_state: &wg_states[0],
     };
 
     let msg = read_to_string(env::var("MSG_TXT_PATH").unwrap()).unwrap();
