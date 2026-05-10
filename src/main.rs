@@ -1,5 +1,5 @@
 use crate::wgzimmer::checkpoint::*;
-use crate::wgzimmer::scrape::{Wg, scrape};
+use crate::wgzimmer::scrape::{Wg, scrape_all};
 
 use dotenv::dotenv;
 use serde_json;
@@ -7,7 +7,6 @@ use std::env;
 use std::fs::read_to_string;
 use thirtyfour::prelude::*;
 use tokio::signal;
-use tokio::time::{Duration, sleep};
 
 mod wgzimmer;
 
@@ -72,7 +71,7 @@ async fn main() -> WebDriverResult<()> {
 
     let mut collected: Option<Vec<Wg>> = None;
     tokio::select! {
-        res = scrape(&driver, &q, &a, &all_links, &mut collected) => {
+        res = scrape_all(&driver, &q, &a, &all_links, &mut collected) => {
             if let Err(e) = res {
                 eprintln!("Could not scrape: {:?}", e);
             }

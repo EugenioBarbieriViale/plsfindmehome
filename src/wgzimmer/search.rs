@@ -1,5 +1,5 @@
 use crate::WGQuery;
-use crate::wgzimmer::{Direction, rnd, scroll_to};
+use crate::wgzimmer::utils::{Direction, rnd, scroll_to};
 
 use thirtyfour::prelude::*;
 use tokio::time::{Duration, sleep};

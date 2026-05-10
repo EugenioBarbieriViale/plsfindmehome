@@ -1,4 +1,4 @@
-use crate::wgzimmer::Wg;
+use crate::Wg;
 
 use chrono::Local;
 use std::fs::{File, create_dir, read_dir};
